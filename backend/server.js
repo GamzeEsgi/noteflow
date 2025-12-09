@@ -13,7 +13,21 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { sequelize } = require('./models');
+
+// Ortam değişkenlerini .env dosyasından yükle
+dotenv.config();
+
+// Models'i try-catch ile yükle
+let sequelize;
+try {
+  const models = require('./models');
+  sequelize = models.sequelize;
+  console.log('✅ Models başarıyla yüklendi');
+} catch (error) {
+  console.error('❌ Models yüklenirken hata:', error.message);
+  // Models yüklenemezse bile uygulama çalışmaya devam etsin
+  sequelize = null;
+}
 
 // Ortam değişkenlerini .env dosyasından yükle
 dotenv.config();
@@ -83,7 +97,11 @@ sequelize.sync({
 // ============================================
 
 // Kimlik doğrulama route'ları (kayıt, giriş, profil)
-app.use('/api/auth', require('./routes/auth'));
+try {
+  app.use('/api/auth', require('./routes/auth'));
+} catch (error) {
+  console.error('❌ Auth routes yüklenirken hata:', error);
+}
 
 // Şikayet route'ları (oluşturma, listeleme)
 app.use('/api/sikayet', require('./routes/sikayet'));
