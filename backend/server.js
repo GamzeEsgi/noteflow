@@ -25,12 +25,10 @@ try {
   console.log('✅ Models başarıyla yüklendi');
 } catch (error) {
   console.error('❌ Models yüklenirken hata:', error.message);
+  console.error('Hata stack:', error.stack);
   // Models yüklenemezse bile uygulama çalışmaya devam etsin
   sequelize = null;
 }
-
-// Ortam değişkenlerini .env dosyasından yükle
-dotenv.config();
 
 // Express uygulamasını oluştur
 const app = express();
@@ -76,21 +74,39 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Development'ta alter: true (tabloları güncellemek için)
 const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
-// Vercel'de tabloları oluştur (eğer yoksa)
-sequelize.sync({ 
-  alter: false, // Production'da alter kullanma
-  force: false // Hiçbir zaman force kullanma (veri kaybı olur)
-})
-  .then(() => {
-    console.log('✅ Veritabanı tabloları hazır');
-  })
-  .catch(err => {
-    console.error('❌ Veritabanı sync hatası:', err.message);
-    // Production'da sync hatası kritik değil (tablolar zaten var olabilir)
-    if (!isProduction) {
-      console.error('Detay:', err);
+// Veritabanı sync işlemini async olarak yap (uygulama başlatmayı engellemez)
+if (sequelize) {
+  (async () => {
+    try {
+      await sequelize.authenticate();
+      console.log('✅ Veritabanı bağlantısı başarılı');
+      
+      // Sync işlemini arka planda yap
+      sequelize.sync({ 
+        alter: false, // Production'da alter kullanma
+        force: false // Hiçbir zaman force kullanma (veri kaybı olur)
+      })
+        .then(() => {
+          console.log('✅ Veritabanı tabloları hazır');
+        })
+        .catch(err => {
+          console.error('❌ Veritabanı sync hatası:', err.message);
+          // Production'da sync hatası kritik değil (tablolar zaten var olabilir)
+          if (!isProduction) {
+            console.error('Detay:', err);
+          }
+        });
+    } catch (err) {
+      console.error('❌ Veritabanı bağlantı hatası:', err.message);
+      // Production'da bağlantı hatası uygulamayı durdurmaz
+      if (!isProduction) {
+        console.error('Detay:', err);
+      }
     }
-  });
+  })();
+} else {
+  console.warn('⚠️  Sequelize yüklenemedi, veritabanı işlemleri çalışmayabilir');
+}
 
 // ============================================
 // API ROUTE'LARI
@@ -133,15 +149,21 @@ app.get('/', (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     // Veritabanı bağlantısını test et
-    const { sequelize } = require('./models');
-    await sequelize.authenticate();
-    
-    res.json({ 
-      status: 'ok',
-      message: 'API is running',
-      database: 'connected',
-      timestamp: new Date().toISOString()
-    });
+    if (sequelize) {
+      await sequelize.authenticate();
+      res.json({ 
+        status: 'ok',
+        message: 'API is running',
+        database: 'connected',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(500).json({ 
+        status: 'error',
+        message: 'API is running but database not initialized',
+        timestamp: new Date().toISOString()
+      });
+    }
   } catch (error) {
     res.status(500).json({ 
       status: 'error',
