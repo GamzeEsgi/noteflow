@@ -30,6 +30,9 @@ export default function Kayit({ onKayitBasarili }) {
     setHata('');
 
     try {
+      console.log('API URL:', API_URL);
+      console.log('Kayıt isteği gönderiliyor:', `${API_URL}/api/auth/kayit`);
+      
       // Backend API'ye kayıt isteği gönder
       const response = await fetch(`${API_URL}/api/auth/kayit`, {
         method: 'POST',
@@ -37,19 +40,31 @@ export default function Kayit({ onKayitBasarili }) {
         body: JSON.stringify({ ad, email, sifre, blok, kat, daire, telefon, rol })
       });
 
-      const data = await response.json();
+      console.log('Response status:', response.status);
+      
+      // Response'un JSON olup olmadığını kontrol et
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response:', text);
+        setHata(`Sunucu hatası: ${response.status} - ${text.substring(0, 100)}`);
+        return;
+      }
 
       if (response.ok) {
         // Kayıt başarılı - token ve kullanıcı rolünü üst bileşene gönder
-        // DÜZELTME: data.rol -> data.kullanici.rol olarak değiştirildi
         onKayitBasarili(data.token, data.kullanici.rol);
       } else {
         // Backend'den gelen hata mesajını göster
-        setHata(data.mesaj || 'Kayıt başarısız');
+        setHata(data.mesaj || data.error || 'Kayıt başarısız');
       }
     } catch (err) {
       // Ağ hatası veya sunucu erişim sorunu
-      setHata('Sunucuya bağlanılamadı. Backend sunucusunun çalıştığından emin olun.');
+      console.error('Kayıt hatası:', err);
+      setHata(`Sunucuya bağlanılamadı: ${err.message}. API URL: ${API_URL}`);
     } finally {
       setLoading(false);
     }
