@@ -112,12 +112,26 @@ app.get('/', (req, res) => {
 });
 
 // API health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok',
-    message: 'API is running',
-    timestamp: new Date().toISOString()
-  });
+app.get('/api/health', async (req, res) => {
+  try {
+    // Veritabanı bağlantısını test et
+    const { sequelize } = require('./models');
+    await sequelize.authenticate();
+    
+    res.json({ 
+      status: 'ok',
+      message: 'API is running',
+      database: 'connected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error',
+      message: 'API is running but database connection failed',
+      error: process.env.NODE_ENV === 'production' ? 'Database error' : error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // ============================================
