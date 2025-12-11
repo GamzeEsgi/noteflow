@@ -1,137 +1,53 @@
-/**
- * Veritabanı Yapılandırması
- * Vercel Postgres için optimize edilmiş
- * Hem production (Vercel) hem de local development için çalışır
- * 
- * Öncelik sırası:
- * 1. POSTGRES_URL (Vercel Postgres)
- * 2. DATABASE_URL (Genel PostgreSQL)
- * 3. SQLite (Local development)
- */
+const mongoose = require('mongoose');
 
-const { Sequelize } = require('sequelize');
-require('dotenv').config();
+// Vercel serverless için connection caching
+let cached = global.mongoose;
 
-let sequelize;
-const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
-
-// Vercel Postgres veya PostgreSQL kullanılıyorsa
-if (process.env.POSTGRES_URL || (process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres'))) {
-  const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-  
-  sequelize = new Sequelize(connectionString, {
-    dialect: 'postgres',
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      },
-      // Vercel serverless için optimize edilmiş ayarlar
-      connectTimeout: 10000,
-      statement_timeout: 10000
-    },
-    logging: process.env.DB_LOGGING === 'true' ? console.log : false,
-    pool: {
-      // Serverless functions için connection pooling
-      max: isProduction ? 5 : 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
-      evict: 1000
-    },
-    define: {
-      freezeTableName: true,
-      underscored: false,
-      charset: 'utf8',
-      collate: 'utf8_general_ci'
-    },
-    // Vercel'de connection'ları kapat
-    retry: {
-      max: 3
-    }
-  });
-  console.log('📦 PostgreSQL kullanılıyor (Vercel/Production)');
-} 
-// PlanetScale (MySQL) veya diğer MySQL kullanılıyorsa
-else if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('mysql')) {
-  sequelize = new Sequelize(process.env.DATABASE_URL, {
-    dialect: 'mysql',
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
-    },
-    logging: process.env.DB_LOGGING === 'true' ? console.log : false,
-    pool: {
-      max: isProduction ? 5 : 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    define: {
-      freezeTableName: true
-    }
-  });
-  console.log('📦 MySQL (PlanetScale) kullanılıyor');
-}
-// Supabase veya başka bir PostgreSQL
-else if (process.env.SUPABASE_DB_URL) {
-  sequelize = new Sequelize(process.env.SUPABASE_DB_URL, {
-    dialect: 'postgres',
-    dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
-    },
-    logging: process.env.DB_LOGGING === 'true' ? console.log : false,
-    pool: {
-      max: isProduction ? 5 : 10,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    define: {
-      freezeTableName: true
-    }
-  });
-  console.log('📦 Supabase PostgreSQL kullanılıyor');
-}
-// Fallback: SQLite (sadece local development için)
-else {
-  const path = require('path');
-  sequelize = new Sequelize({
-    dialect: 'sqlite',
-    storage: path.join(__dirname, '../apartman.db'),
-    logging: process.env.DB_LOGGING === 'true' ? console.log : false,
-    define: {
-      freezeTableName: true
-    }
-  });
-  console.log('📦 SQLite kullanılıyor (local development)');
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
 }
 
-// Veritabanı bağlantısını test et
-sequelize.authenticate()
-  .then(() => {
-    console.log('✅ Veritabanı bağlantısı başarılı');
-  })
-  .catch(err => {
-    console.error('❌ Veritabanı bağlantı hatası:', err.message);
-    // Production'da hata durumunda uygulamayı durdurma
-    if (!isProduction) {
-      console.error('Detay:', err);
+const connectDB = async () => {
+  // Eğer zaten bağlıysa ve bağlantı aktifse, mevcut bağlantıyı kullan
+  if (cached.conn) {
+    // Bağlantının hala aktif olduğunu kontrol et
+    if (mongoose.connection.readyState === 1) {
+      return cached.conn;
+    } else {
+      // Bağlantı kopmuş, temizle
+      cached.conn = null;
     }
-  });
+  }
 
-// Vercel serverless için connection cleanup
-if (isProduction) {
-  // Graceful shutdown için connection'ları kapat
-  process.on('SIGTERM', async () => {
-    await sequelize.close();
-  });
-}
+  // Eğer bağlantı kuruluyorsa, promise'i bekle
+  if (!cached.promise) {
+    const opts = {
+      bufferCommands: false,
+      serverSelectionTimeoutMS: 5000, // 5 saniye timeout
+      socketTimeoutMS: 45000,
+    };
 
-// Sequelize instance'ını dışa aktar
-module.exports = sequelize;
+    cached.promise = mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/notesaas', opts).then((mongoose) => {
+      console.log('✅ MongoDB bağlantısı başarılı');
+      cached.conn = mongoose;
+      return mongoose;
+    }).catch((error) => {
+      console.error('❌ MongoDB bağlantı hatası:', error.message);
+      cached.promise = null; // Hata durumunda promise'i temizle
+      cached.conn = null;
+      throw error;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    cached.conn = null;
+    throw e;
+  }
+
+  return cached.conn;
+};
+
+module.exports = connectDB;

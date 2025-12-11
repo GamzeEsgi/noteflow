@@ -1,117 +1,96 @@
-/**
- * Veritabanı Seed Dosyası
- * Başlangıç verilerini oluşturur:
- * - Şikayet kategorileri
- * - Test kullanıcıları (yönetici, personel, sakin)
- * 
- * Kullanım: node seed.js
- */
-
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const { User, Kategori, sequelize } = require('./models');
+const dotenv = require('dotenv');
+const User = require('./models/User');
+const Note = require('./models/Note');
 
-/**
- * Seed fonksiyonu
- * Veritabanını başlangıç verileriyle doldurur
- */
-async function seed() {
+dotenv.config();
+
+const connectDB = async () => {
   try {
-    console.log('🌱 Seed işlemi başlıyor...\n');
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true
+    });
+    console.log('✅ MongoDB bağlantısı başarılı');
+  } catch (error) {
+    console.error('❌ MongoDB bağlantı hatası:', error.message);
+    process.exit(1);
+  }
+};
 
-    // Veritabanı tablolarını senkronize et
-    await sequelize.sync({ alter: true });
-    console.log('✅ Veritabanı tabloları hazır\n');
+const seed = async () => {
+  try {
+    await connectDB();
 
-    // ============================================
-    // KATEGORİLERİ OLUŞTUR
-    // ============================================
+    // Mevcut kullanıcıları temizle (opsiyonel)
+    // await User.deleteMany({});
+    // await Note.deleteMany({});
+
+    // Test kullanıcısı oluştur
+    const testEmail = 'test@example.com';
+    const testPassword = 'test123456';
+
+    const existingUser = await User.findOne({ email: testEmail });
     
-    // Apartmanlarda sık karşılaşılan sorun kategorileri
-    const kategoriler = [
-      { ad: 'Bakım ve Onarım', aciklama: 'Genel bakım ve onarım işleri' },
-      { ad: 'Elektrik', aciklama: 'Elektrik sistemi sorunları' },
-      { ad: 'Su ve Kanalizasyon', aciklama: 'Su ve kanalizasyon sorunları' },
-      { ad: 'Isıtma Sistemi', aciklama: 'Isıtma ve klima sorunları' },
-      { ad: 'Kapıcı ve Güvenlik', aciklama: 'Kapıcı ve güvenlik hizmetleri' },
-      { ad: 'Asansör', aciklama: 'Asansör arıza ve bakımı' },
-      { ad: 'Çatı ve Cephe', aciklama: 'Çatı ve cephe sorunları' },
-      { ad: 'Diğer', aciklama: 'Diğer konular' }
-    ];
-
-    // Kategorileri ekle (varsa güncelleme, findOrCreate ile)
-    for (const kat of kategoriler) {
-      await Kategori.findOrCreate({ where: { ad: kat.ad }, defaults: kat });
+    if (existingUser) {
+      console.log('⚠️ Test kullanıcısı zaten mevcut!');
+      console.log(`Email: ${testEmail}`);
+      console.log(`Şifre: ${testPassword}`);
+      process.exit(0);
     }
-    console.log('✅ Kategoriler oluşturuldu');
 
-    // ============================================
-    // TEST KULLANICILARI OLUŞTUR
-    // ============================================
+    // Şifreyi hashle
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(testPassword, salt);
 
-    // Tüm test kullanıcıları için aynı şifre (123456)
-    const hashedSifre = await bcrypt.hash('123456', 10);
+    // Kullanıcı oluştur
+    const user = new User({
+      email: testEmail,
+      password: hashedPassword,
+      plan: 'free'
+    });
 
-    // Test kullanıcıları - her rolden bir tane
-    const users = [
-      { 
-        ad: 'Admin Yönetici', 
-        email: 'admin@test.com', 
-        sifre: hashedSifre, 
-        blok: 'A',
-        kat: '1',
-        daire: '001', 
-        telefon: '5550000001', 
-        rol: 'yonetici' 
+    await user.save();
+    console.log('✅ Test kullanıcısı oluşturuldu!');
+    console.log('');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('📝 TEST KULLANICI BİLGİLERİ');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`Email: ${testEmail}`);
+    console.log(`Şifre: ${testPassword}`);
+    console.log('');
+    console.log('🌐 Giriş yapmak için:');
+    console.log('   http://localhost:5000/login.html');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+    // Örnek notlar oluştur (opsiyonel)
+    const sampleNotes = [
+      {
+        title: 'Hoş Geldiniz!',
+        content: 'NoteFlow\'a hoş geldiniz! Bu ilk notunuz. Yeni notlar oluşturmak için sol menüyü kullanabilirsiniz.',
+        user: user._id
       },
-      { 
-        ad: 'Ahmet Personel', 
-        email: 'personel@test.com', 
-        sifre: hashedSifre, 
-        blok: 'A',
-        kat: '2',
-        daire: '002', 
-        telefon: '5550000002', 
-        rol: 'personel' 
+      {
+        title: 'Notlarınızı Organize Edin',
+        content: 'Notlarınızı düzenleyebilir, silebilir ve arayabilirsiniz. Tüm notlarınız güvenli bir şekilde saklanır.',
+        user: user._id
       },
-      { 
-        ad: 'Mehmet Sakin', 
-        email: 'sakin@test.com', 
-        sifre: hashedSifre, 
-        blok: 'B',
-        kat: '3',
-        daire: '005', 
-        telefon: '5550000003', 
-        rol: 'sakin' 
+      {
+        title: 'Free Plan',
+        content: 'Free plan ile 50 not oluşturabilirsiniz. Daha fazla not için premium plana geçebilirsiniz.',
+        user: user._id
       }
     ];
 
-    // Kullanıcıları ekle (varsa atlat)
-    for (const user of users) {
-      await User.findOrCreate({ where: { email: user.email }, defaults: user });
-    }
-    console.log('✅ Test kullanıcıları oluşturuldu');
-
-    // ============================================
-    // BİLGİLENDİRME
-    // ============================================
-
-    console.log('\n' + '='.repeat(50));
-    console.log('🎉 Seed işlemi başarıyla tamamlandı!\n');
-    console.log('📝 Test Hesapları:');
-    console.log('─'.repeat(50));
-    console.log('👔 Yönetici : admin@test.com     / Şifre: 123456');
-    console.log('🔧 Personel : personel@test.com  / Şifre: 123456');
-    console.log('👤 Sakin    : sakin@test.com     / Şifre: 123456');
-    console.log('─'.repeat(50));
-    console.log('\n🚀 Sunucuyu başlatmak için: npm run dev');
-    console.log('='.repeat(50));
+    await Note.insertMany(sampleNotes);
+    console.log('✅ Örnek notlar oluşturuldu (3 adet)');
 
     process.exit(0);
-  } catch (err) {
-    console.error('❌ Seed hatası:', err);
+  } catch (error) {
+    console.error('❌ Seed hatası:', error.message);
     process.exit(1);
   }
-}
+};
 
-// Seed fonksiyonunu çalıştır
 seed();

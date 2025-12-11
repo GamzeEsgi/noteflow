@@ -1,20 +1,15 @@
 {
   "version": 2,
-  "buildCommand": "cd backend/frontend && npm install && npm run build",
-  "outputDirectory": "backend/frontend/build",
-  "installCommand": "cd backend/frontend && npm install",
-  "rewrites": [
-    {
-      "source": "/api/init-db",
-      "destination": "/api/init-db.js"
-    },
-    {
-      "source": "/api/:path*",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ]
+  "builds": [
+    { "src": "backend/server.js", "use": "@vercel/node" },
+    { "src": "frontend/**/*", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "backend/server.js" },
+    { "src": "/(.*)", "dest": "/frontend/$1" }
+  ],
+  "env": {
+    "MONGODB_URI": "@mongodb_uri",
+    "JWT_SECRET": "@jwt_secret"
+  }
 }

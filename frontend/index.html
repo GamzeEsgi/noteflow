@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notlarım - NoteFlow</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+                <h1 class="logo">
+                    <span class="logo-icon">📝</span>
+                    <span class="logo-text">
+                        <span class="logo-note">Note</span><span class="logo-flow">Flow</span>
+                    </span>
+                </h1>
+            </div>
+            <div class="header-right">
+                <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
+                    <span id="themeIcon">🌙</span>
+                </button>
+                <div class="user-info">
+                    <span id="userEmail"></span>
+                    <span class="plan-badge" id="planBadge">Free</span>
+                </div>
+                <button class="btn btn-secondary" id="logoutBtn">Çıkış</button>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-content">
+                    <div class="new-note-section">
+                        <h2>Yeni Not</h2>
+                        <form id="newNoteForm">
+                            <div class="form-group">
+                                <input type="text" id="newNoteTitle" placeholder="Not Başlığı" required>
+                            </div>
+                            <div class="form-group">
+                                <textarea id="newNoteContent" placeholder="Not İçeriği" rows="4" required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Renk</label>
+                                <div class="color-picker">
+                                    <input type="color" id="newNoteColor" value="#fef3c7" title="Not Rengi">
+                                    <div class="color-presets">
+                                        <button type="button" class="color-preset" data-color="#fef3c7" style="background: #fef3c7"></button>
+                                        <button type="button" class="color-preset" data-color="#ddd6fe" style="background: #ddd6fe"></button>
+                                        <button type="button" class="color-preset" data-color="#fce7f3" style="background: #fce7f3"></button>
+                                        <button type="button" class="color-preset" data-color="#cffafe" style="background: #cffafe"></button>
+                                        <button type="button" class="color-preset" data-color="#d1fae5" style="background: #d1fae5"></button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Tarih (Opsiyonel)</label>
+                                <input type="date" id="newNoteDate">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">Not Ekle</button>
+                        </form>
+                    </div>
+                    <div class="stats-section">
+                        <div class="stat-item">
+                            <span class="stat-label">Toplam Not:</span>
+                            <span class="stat-value" id="totalNotes">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Limit:</span>
+                            <span class="stat-value" id="noteLimit">50</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Notes Area -->
+            <main class="notes-area">
+                <div class="notes-header">
+                    <div class="header-tabs">
+                        <button class="tab-btn active" data-tab="notes">📝 Notlarım</button>
+                        <button class="tab-btn" data-tab="calendar">📅 Ajanda</button>
+                    </div>
+                    <div class="search-box">
+                        <input type="text" id="searchInput" placeholder="Notlarda ara...">
+                    </div>
+                </div>
+                
+                <!-- Notes Tab -->
+                <div class="tab-content active" id="notesTab">
+                    <div class="notes-grid" id="notesGrid">
+                        <div class="loading">Yükleniyor...</div>
+                    </div>
+                </div>
+                
+                <!-- Calendar Tab -->
+                <div class="tab-content" id="calendarTab">
+                    <div class="notebook-container">
+                        <div class="notebook-cover">
+                            <div class="notebook-spine"></div>
+                            <div class="notebook-pages">
+                                <div class="notebook-page">
+                                    <div class="page-header">
+                                        <div class="calendar-header">
+                                            <button class="calendar-nav-btn" id="prevMonth">‹</button>
+                                            <h3 id="calendarMonth"></h3>
+                                            <button class="calendar-nav-btn" id="nextMonth">›</button>
+                                        </div>
+                                    </div>
+                                    <div class="page-content">
+                                        <div class="calendar-grid" id="calendarGrid"></div>
+                                    </div>
+                                </div>
+                                <div class="notebook-page-right">
+                                    <div class="page-header-right">
+                                        <h4>📅 Günlük Notlar</h4>
+                                    </div>
+                                    <div class="page-content-right">
+                                        <div class="calendar-notes" id="calendarNotes">
+                                            <div class="empty-calendar-state">
+                                                <p>📝 Bir tarihe tıklayarak o güne ait notları görüntüleyin</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Edit Note Modal -->
+    <div class="modal" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Notu Düzenle</h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <form id="editNoteForm">
+                <!-- Toolbar -->
+                <div class="editor-toolbar">
+                    <button type="button" class="toolbar-btn" data-command="bold" title="Kalın">
+                        <span>B</span>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-command="italic" title="İtalik">
+                        <span>I</span>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-command="underline" title="Altı Çizili">
+                        <span>U</span>
+                    </button>
+                    <div class="toolbar-separator"></div>
+                    <button type="button" class="toolbar-btn" data-command="formatBlock" data-value="h2" title="Başlık">
+                        <span>H</span>
+                    </button>
+                    <button type="button" class="toolbar-btn" data-command="insertUnorderedList" title="Liste">
+                        <span>•</span>
+                    </button>
+                    <div class="toolbar-separator"></div>
+                    <input type="color" id="textColorPicker" class="toolbar-color" title="Metin Rengi">
+                    <button type="button" class="toolbar-btn" data-command="removeFormat" title="Formatı Temizle">
+                        <span>✕</span>
+                    </button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editNoteTitle">Başlık</label>
+                    <input type="text" id="editNoteTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="editNoteContent">İçerik</label>
+                    <div class="editor-wrapper">
+                        <div id="editNoteContent" contenteditable="true" class="rich-editor"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Not Rengi</label>
+                    <div class="color-picker">
+                        <input type="color" id="editNoteColor" value="#fef3c7">
+                        <div class="color-presets">
+                            <button type="button" class="color-preset" data-color="#fef3c7" style="background: #fef3c7"></button>
+                            <button type="button" class="color-preset" data-color="#ddd6fe" style="background: #ddd6fe"></button>
+                            <button type="button" class="color-preset" data-color="#fce7f3" style="background: #fce7f3"></button>
+                            <button type="button" class="color-preset" data-color="#cffafe" style="background: #cffafe"></button>
+                            <button type="button" class="color-preset" data-color="#d1fae5" style="background: #d1fae5"></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Tarih</label>
+                    <input type="date" id="editNoteDate">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelEdit">İptal</button>
+                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                    <button type="button" class="btn btn-danger" id="deleteNoteBtn">Sil</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
+

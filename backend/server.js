@@ -1,195 +1,91 @@
-/**
- * Apartman Şikayet Yönetim Sistemi - Ana Sunucu Dosyası
- * Express.js tabanlı REST API sunucusu
- * 
- * Bu dosya uygulamanın giriş noktasıdır ve:
- * - Express uygulamasını yapılandırır
- * - Middleware'leri yükler
- * - Veritabanı bağlantısını başlatır
- * - API route'larını tanımlar
- * - Sunucuyu başlatır
- */
-
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const dotenv = require('dotenv');
+const connectDB = require('./config/database');
 
-// Ortam değişkenlerini .env dosyasından yükle
+// Ortam değişkenlerini yükle
 dotenv.config();
 
-// Models'i try-catch ile yükle
-let sequelize;
-try {
-  const models = require('./models');
-  sequelize = models.sequelize;
-  console.log('✅ Models başarıyla yüklendi');
-} catch (error) {
-  console.error('❌ Models yüklenirken hata:', error.message);
-  console.error('Hata stack:', error.stack);
-  // Models yüklenemezse bile uygulama çalışmaya devam etsin
-  sequelize = null;
-}
-
-// Express uygulamasını oluştur
 const app = express();
 
-// ============================================
-// MIDDLEWARE YAPILANDIRMASI
-// ============================================
-
-// CORS - Cross-Origin Resource Sharing
-// Frontend'in farklı bir porttan API'ye erişmesine izin verir
-const allowedOrigins = [
-  'http://localhost:3000',
-  process.env.FRONTEND_URL,
-  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
-  'https://apartman-sikayet-sistemi.vercel.app'
-].filter(Boolean); // null/undefined değerleri filtrele
-
+// Middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    // Origin yoksa (mobile app, Postman vb.) veya izin verilen listede ise
-    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-      callback(null, true);
-    } else {
-      // Production'da tüm origin'lere izin ver (güvenlik için daha sonra kısıtlanabilir)
-      callback(null, true);
-    }
-  },
+  origin: process.env.NODE_ENV === 'production' 
+    ? (process.env.FRONTEND_URL || '*')
+    : '*',
   credentials: true
 }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// JSON body parser - JSON formatındaki request body'leri parse eder
-app.use(express.json({ limit: '50mb' })); // 50mb limit - Base64 fotoğraflar için
+// Serve static files from frontend directory
+app.use(express.static(path.join(__dirname, '../frontend'), {
+  maxAge: '1d',
+  etag: true
+}));
 
-// URL-encoded body parser - Form verilerini parse eder
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// MongoDB bağlantısı (non-blocking)
+connectDB().catch(err => {
+  console.error('❌ MongoDB bağlantı hatası:', err.message);
+  console.log('⚠️ Sunucu MongoDB olmadan çalışıyor. API endpoint\'leri çalışmayacak.');
+  console.log('💡 MongoDB bağlantısı için .env dosyasındaki MONGODB_URI değerini kontrol edin.');
+});
 
-// ============================================
-// VERİTABANI SENKRONİZASYONU
-// ============================================
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/notes', require('./routes/notes'));
 
-// Sequelize modellerini veritabanı ile senkronize et
-// Production'da alter: false (veri kaybını önlemek için)
-// Development'ta alter: true (tabloları güncellemek için)
-const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'OK', message: 'NoteSaaS API is running' });
+});
 
-// Veritabanı sync işlemini async olarak yap (uygulama başlatmayı engellemez)
-if (sequelize) {
-  (async () => {
-    try {
-      await sequelize.authenticate();
-      console.log('✅ Veritabanı bağlantısı başarılı');
-      
-      // Sync işlemini arka planda yap
-      sequelize.sync({ 
-        alter: false, // Production'da alter kullanma
-        force: false // Hiçbir zaman force kullanma (veri kaybı olur)
-      })
-        .then(() => {
-          console.log('✅ Veritabanı tabloları hazır');
-        })
-        .catch(err => {
-          console.error('❌ Veritabanı sync hatası:', err.message);
-          // Production'da sync hatası kritik değil (tablolar zaten var olabilir)
-          if (!isProduction) {
-            console.error('Detay:', err);
-          }
-        });
-    } catch (err) {
-      console.error('❌ Veritabanı bağlantı hatası:', err.message);
-      // Production'da bağlantı hatası uygulamayı durdurmaz
-      if (!isProduction) {
-        console.error('Detay:', err);
-      }
-    }
-  })();
-} else {
-  console.warn('⚠️  Sequelize yüklenemedi, veritabanı işlemleri çalışmayabilir');
-}
-
-// ============================================
-// API ROUTE'LARI
-// ============================================
-
-// Kimlik doğrulama route'ları (kayıt, giriş, profil)
-try {
-  app.use('/api/auth', require('./routes/auth'));
-} catch (error) {
-  console.error('❌ Auth routes yüklenirken hata:', error);
-}
-
-// Şikayet route'ları (oluşturma, listeleme)
-app.use('/api/sikayet', require('./routes/sikayet'));
-
-// Yönetici route'ları (şikayet atama, analiz)
-app.use('/api/yonetici', require('./routes/yonetici'));
-
-// Personel route'ları (şikayet güncelleme, bildirimler)
-app.use('/api/personel', require('./routes/personel'));
-
-// Analiz route'ları (istatistikler, raporlar)
-app.use('/api/analiz', require('./routes/analiz'));
-
-// ============================================
-// ANA ROUTE
-// ============================================
-
-// API sağlık kontrolü endpoint'i
+// Root route - serve index.html
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Apartman Şikayet Sistemi API çalışıyor',
-    version: '1.0.0',
-    status: 'active',
-    timestamp: new Date().toISOString()
-  });
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// API health check endpoint
-app.get('/api/health', async (req, res) => {
-  try {
-    // Veritabanı bağlantısını test et
-    if (sequelize) {
-      await sequelize.authenticate();
-      res.json({ 
-        status: 'ok',
-        message: 'API is running',
-        database: 'connected',
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      res.status(500).json({ 
-        status: 'error',
-        message: 'API is running but database not initialized',
-        timestamp: new Date().toISOString()
-      });
-    }
-  } catch (error) {
-    res.status(500).json({ 
-      status: 'error',
-      message: 'API is running but database connection failed',
-      error: process.env.NODE_ENV === 'production' ? 'Database error' : error.message,
-      timestamp: new Date().toISOString()
-    });
+// Serve other HTML files
+app.get('/login.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/login.html'));
+});
+
+app.get('/register.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/register.html'));
+});
+
+// Serve frontend for all other non-API routes
+app.get('*', (req, res) => {
+  // API route'larını atla
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ message: 'API endpoint bulunamadı.' });
   }
+  
+  // Static dosyalar için 404 döndür
+  const ext = path.extname(req.path);
+  if (ext && ext !== '.html') {
+    return res.status(404).send('File not found');
+  }
+  
+  // Diğer HTML dosyaları için index.html gönder
+  res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-// ============================================
-// SUNUCUYU BAŞLAT
-// ============================================
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ message: 'Something went wrong!', error: err.message });
+});
 
-// Port numarasını ortam değişkeninden al veya varsayılan 5000 kullan
-const PORT = process.env.PORT || 5000;
+// For Vercel serverless
+module.exports = app;
 
-// Vercel serverless functions için app'i export et
-// Eğer Vercel'de çalışıyorsa listen() çağrılmayacak
-if (process.env.VERCEL !== '1') {
-  // Sunucuyu başlat ve dinlemeye başla (sadece local development için)
-  app.listen(PORT, () => {
+// Sunucuyu başlat (sadece local development için)
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server http://localhost:${PORT} adresinde çalışıyor`);
-    console.log('📚 API Dokümantasyonu: README.md dosyasına bakın');
+    console.log(`📡 API: http://localhost:${PORT}/api`);
   });
 }
-
-// Vercel için app'i export et
-module.exports = app;
