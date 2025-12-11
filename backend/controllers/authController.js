@@ -142,3 +142,64 @@ exports.getMe = async (req, res) => {
   }
 };
 
+// Create test user
+exports.createTestUser = async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
+        error: 'MongoDB not connected'
+      });
+    }
+
+    const testEmail = 'test@example.com';
+    const testPassword = 'test123456';
+
+    // Check if user exists
+    const existingUser = await User.findOne({ email: testEmail });
+    if (existingUser) {
+      return res.json({
+        message: 'Test kullanıcısı zaten mevcut',
+        email: testEmail,
+        password: testPassword,
+        user: {
+          id: existingUser._id,
+          email: existingUser.email
+        }
+      });
+    }
+
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(testPassword, salt);
+
+    // Create user
+    const user = new User({
+      email: testEmail,
+      password: hashedPassword,
+      plan: 'free'
+    });
+
+    await user.save();
+
+    res.status(201).json({
+      message: 'Test kullanıcısı oluşturuldu',
+      email: testEmail,
+      password: testPassword,
+      user: {
+        id: user._id,
+        email: user.email,
+        plan: user.plan
+      }
+    });
+  } catch (error) {
+    console.error('Create test user error:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message
+    });
+  }
+};
+
