@@ -48,7 +48,12 @@
             const password = document.getElementById('password').value;
 
             try {
-                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                // HTTPS kontrolü
+                const apiUrl = API_BASE_URL.startsWith('http') 
+                    ? API_BASE_URL 
+                    : (window.location.protocol === 'https:' ? 'https:' : 'https:') + '//' + window.location.host + '/api';
+                
+                const response = await fetch(`${apiUrl}/auth/login`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -56,18 +61,36 @@
                     body: JSON.stringify({ email, password })
                 });
 
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    if (errorData.message === 'Invalid credentials') {
+                        errorDiv.textContent = 'Email veya şifre hatalı. Hesabınız yoksa kayıt olun.';
+                    } else {
+                        errorDiv.textContent = errorData.message || 'Giriş başarısız';
+                    }
+                    errorDiv.style.display = 'block';
+                    return;
+                }
+
                 const data = await response.json();
 
-                if (response.ok) {
+                if (data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
                     window.location.href = 'index.html';
                 } else {
-                    errorDiv.textContent = data.message || 'Giriş başarısız';
+                    errorDiv.textContent = 'Giriş başarısız. Lütfen tekrar deneyin.';
                     errorDiv.style.display = 'block';
                 }
             } catch (error) {
-                errorDiv.textContent = 'Bir hata oluştu. Lütfen tekrar deneyin.';
+                console.error('Login error:', error);
+                if (error.message.includes('SSL') || error.message.includes('protocol')) {
+                    errorDiv.textContent = 'Bağlantı hatası. Lütfen sayfayı yenileyin (F5) ve HTTPS kullandığınızdan emin olun.';
+                } else if (error.message.includes('Failed to fetch')) {
+                    errorDiv.textContent = 'Sunucuya bağlanılamıyor. Lütfen daha sonra tekrar deneyin.';
+                } else {
+                    errorDiv.textContent = 'Bir hata oluştu: ' + error.message;
+                }
                 errorDiv.style.display = 'block';
             }
         });

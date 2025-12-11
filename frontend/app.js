@@ -1,5 +1,10 @@
-// API Configuration
+// API Configuration - HTTPS zorunlu
 const API_BASE_URL = window.location.origin + '/api';
+
+// HTTPS kontrolü
+if (window.location.protocol === 'http:') {
+    console.warn('HTTP kullanılıyor. HTTPS kullanmanız önerilir.');
+}
 
 // State
 let currentEditingNoteId = null;
