@@ -203,3 +203,117 @@ exports.createTestUser = async (req, res) => {
   }
 };
 
+// List all users
+exports.listUsers = async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
+        error: 'MongoDB not connected'
+      });
+    }
+
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    
+    res.json({
+      message: 'Kullanıcılar listelendi',
+      count: users.length,
+      users: users.map(user => ({
+        id: user._id,
+        email: user.email,
+        plan: user.plan,
+        createdAt: user.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('List users error:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message
+    });
+  }
+};
+
+// Delete user by email
+exports.deleteUser = async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
+        error: 'MongoDB not connected'
+      });
+    }
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Please provide email' });
+    }
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'Kullanıcı bulunamadı' });
+    }
+
+    // Delete user's notes
+    const Note = require('../models/Note');
+    const deletedNotes = await Note.deleteMany({ user: user._id });
+
+    // Delete user
+    await User.findByIdAndDelete(user._id);
+
+    res.json({
+      message: 'Kullanıcı başarıyla silindi',
+      deletedUser: {
+        id: user._id,
+        email: user.email
+      },
+      deletedNotes: deletedNotes.deletedCount
+    });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message
+    });
+  }
+};
+
+// Delete all users (DANGER!)
+exports.deleteAllUsers = async (req, res) => {
+  try {
+    // Check MongoDB connection
+    const mongoose = require('mongoose');
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(503).json({ 
+        message: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
+        error: 'MongoDB not connected'
+      });
+    }
+
+    // Delete all notes
+    const Note = require('../models/Note');
+    const deletedNotes = await Note.deleteMany({});
+
+    // Delete all users
+    const deletedUsers = await User.deleteMany({});
+
+    res.json({
+      message: 'Tüm kullanıcılar ve notlar silindi',
+      deletedUsers: deletedUsers.deletedCount,
+      deletedNotes: deletedNotes.deletedCount
+    });
+  } catch (error) {
+    console.error('Delete all users error:', error);
+    res.status(500).json({ 
+      message: 'Server error', 
+      error: error.message
+    });
+  }
+};
+

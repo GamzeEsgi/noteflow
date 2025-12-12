@@ -10,4 +10,9 @@ router.get('/me', authMiddleware, authController.getMe);
 // Test kullanıcısı oluşturma endpoint'i (sadece development/test için)
 router.post('/create-test-user', authController.createTestUser);
 
+// Kullanıcı yönetimi endpoint'leri
+router.get('/users', authController.listUsers); // Tüm kullanıcıları listele
+router.delete('/user', authController.deleteUser); // Email'e göre kullanıcı sil
+router.delete('/users/all', authController.deleteAllUsers); // Tüm kullanıcıları sil (DİKKAT!)
+
 module.exports = router;
