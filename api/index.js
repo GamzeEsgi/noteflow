@@ -23,7 +23,15 @@ app.use(express.urlencoded({ extended: true }));
 // MongoDB bağlantısı - Her request'te bağlantıyı kontrol et ve gerekirse kur
 app.use(async (req, res, next) => {
   try {
-    const mongoose = require('mongoose');
+    // Mongoose modülünü yükle
+    let mongoose;
+    try {
+      mongoose = require('mongoose');
+    } catch (moduleError) {
+      console.error('❌ Mongoose modülü yüklenemedi:', moduleError.message);
+      // Mongoose yoksa bile devam et, controller'da hata dönecek
+      return next();
+    }
     
     // Eğer bağlantı yoksa, bağlanmayı dene
     if (mongoose.connection.readyState !== 1) {
@@ -33,6 +41,7 @@ app.use(async (req, res, next) => {
         console.log('✅ MongoDB bağlantısı başarılı');
       } catch (dbError) {
         console.error('❌ MongoDB bağlantı hatası:', dbError.message);
+        console.error('❌ MongoDB bağlantı hatası stack:', dbError.stack);
         // Health check endpoint'i için bağlantı hatası olsa bile devam et
         if (req.path === '/api/health') {
           return next();
@@ -44,6 +53,7 @@ app.use(async (req, res, next) => {
     next();
   } catch (error) {
     console.error('❌ Middleware hatası:', error.message);
+    console.error('❌ Middleware hatası stack:', error.stack);
     // Hata olsa bile devam et (SSL hatasını önlemek için)
     next();
   }
@@ -61,12 +71,23 @@ app.use('/api/notes', require('../backend/routes/notes'));
 
 // Health check
 app.get('/api/health', (req, res) => {
-  const mongoose = require('mongoose');
-  res.json({ 
-    status: 'OK', 
-    message: 'NoteSaaS API is running',
-    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
-  });
+  try {
+    const mongoose = require('mongoose');
+    res.json({ 
+      status: 'OK', 
+      message: 'NoteSaaS API is running',
+      mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+      mongooseLoaded: true
+    });
+  } catch (error) {
+    res.json({ 
+      status: 'OK', 
+      message: 'NoteSaaS API is running',
+      mongodb: 'error',
+      mongooseLoaded: false,
+      error: error.message
+    });
+  }
 });
 
 // Root route - serve index.html

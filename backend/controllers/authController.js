@@ -110,8 +110,20 @@ exports.login = async (req, res) => {
   try {
     console.log('🔐 Login attempt started');
     
+    // Mongoose modülünü yükle
+    let mongoose;
+    try {
+      mongoose = require('mongoose');
+    } catch (moduleError) {
+      console.error('❌ Mongoose modülü yüklenemedi:', moduleError.message);
+      return res.status(500).json({ 
+        mesaj: 'Sunucu yapılandırma hatası: Mongoose modülü bulunamadı.',
+        message: 'Server configuration error: Mongoose module not found',
+        error: moduleError.message
+      });
+    }
+    
     // Check MongoDB connection
-    const mongoose = require('mongoose');
     console.log('📊 MongoDB connection state:', mongoose.connection.readyState);
     
     if (mongoose.connection.readyState !== 1) {
@@ -119,7 +131,8 @@ exports.login = async (req, res) => {
       return res.status(503).json({ 
         mesaj: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
         message: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
-        error: 'MongoDB not connected'
+        error: 'MongoDB not connected',
+        connectionState: mongoose.connection.readyState
       });
     }
 
@@ -149,7 +162,19 @@ exports.login = async (req, res) => {
 
     // Find user
     console.log('🔍 Searching for user...');
-    const user = await User.findOne({ email });
+    let user;
+    try {
+      user = await User.findOne({ email });
+    } catch (userError) {
+      console.error('❌ User.findOne hatası:', userError.message);
+      console.error('❌ User.findOne stack:', userError.stack);
+      return res.status(500).json({ 
+        mesaj: 'Kullanıcı sorgusu sırasında hata oluştu.',
+        message: 'Error querying user',
+        error: userError.message
+      });
+    }
+    
     if (!user) {
       console.error('❌ User not found:', email);
       return res.status(400).json({ 
