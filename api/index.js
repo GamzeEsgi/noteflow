@@ -74,6 +74,15 @@ app.use((err, req, res, next) => {
   }
 });
 
+// Test endpoint - Route yüklemeden önce çalışır
+app.get('/api/test', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    message: 'API is working',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Serve static files from frontend directory
 app.use(express.static(path.join(__dirname, '../frontend'), {
   maxAge: '1d',
@@ -81,33 +90,41 @@ app.use(express.static(path.join(__dirname, '../frontend'), {
 }));
 
 // Routes - Güvenli yükleme ile hata yakalama
-let authRoutes, notesRoutes;
+console.log('🚀 Starting route loading...');
 
 // Auth routes yükleme
+let authRoutesLoaded = false;
 try {
-  console.log('📦 Loading auth routes...');
-  authRoutes = require('../backend/routes/auth');
-  console.log('✅ Auth routes loaded successfully');
-  app.use('/api/auth', authRoutes);
+  console.log('📦 Step 1: Loading auth routes module...');
+  const authRoutesModule = require('../backend/routes/auth');
+  console.log('✅ Step 1: Auth routes module loaded');
+  
+  console.log('📦 Step 2: Registering auth routes...');
+  app.use('/api/auth', authRoutesModule);
+  authRoutesLoaded = true;
+  console.log('✅ Step 2: Auth routes registered successfully');
 } catch (error) {
-  console.error('❌ Backend yüklenirken hata:', error.message);
-  console.error('❌ Error stack:', error.stack);
+  console.error('❌ CRITICAL: Auth routes loading failed');
+  console.error('❌ Error message:', error.message);
   console.error('❌ Error name:', error.name);
   console.error('❌ Error code:', error.code);
+  console.error('❌ Error stack:', error.stack);
   
   // Hata durumunda fallback router oluştur
-  authRoutes = express.Router();
-  authRoutes.all('*', (req, res) => {
+  const fallbackRouter = express.Router();
+  fallbackRouter.all('*', (req, res) => {
     res.status(500).json({ 
       mesaj: 'Backend yüklenirken hata oluştu.',
       message: 'Backend loading error',
       error: error.message,
       errorName: error.name,
       errorCode: error.code,
-      hint: 'Check Vercel Function Logs for details'
+      hint: 'Check Vercel Function Logs for details',
+      route: req.path
     });
   });
-  app.use('/api/auth', authRoutes);
+  app.use('/api/auth', fallbackRouter);
+  console.log('⚠️ Fallback router registered for /api/auth');
 }
 
 // Notes routes yükleme
