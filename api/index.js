@@ -128,16 +128,25 @@ try {
 }
 
 // Notes routes yükleme
+let notesRoutesLoaded = false;
 try {
-  console.log('📦 Loading notes routes...');
-  notesRoutes = require('../backend/routes/notes');
-  console.log('✅ Notes routes loaded successfully');
-  app.use('/api/notes', notesRoutes);
+  console.log('📦 Step 3: Loading notes routes module...');
+  const notesRoutesModule = require('../backend/routes/notes');
+  console.log('✅ Step 3: Notes routes module loaded');
+  
+  console.log('📦 Step 4: Registering notes routes...');
+  app.use('/api/notes', notesRoutesModule);
+  notesRoutesLoaded = true;
+  console.log('✅ Step 4: Notes routes registered successfully');
 } catch (error) {
-  console.error('❌ Notes routes yüklenirken hata:', error.message);
+  console.error('❌ CRITICAL: Notes routes loading failed');
+  console.error('❌ Error message:', error.message);
+  console.error('❌ Error name:', error.name);
+  console.error('❌ Error code:', error.code);
   console.error('❌ Error stack:', error.stack);
-  notesRoutes = express.Router();
-  notesRoutes.all('*', (req, res) => {
+  
+  const fallbackRouter = express.Router();
+  fallbackRouter.all('*', (req, res) => {
     res.status(500).json({ 
       mesaj: 'Notes routes yüklenirken hata oluştu.',
       message: 'Notes routes loading error',
@@ -146,8 +155,12 @@ try {
       errorCode: error.code
     });
   });
-  app.use('/api/notes', notesRoutes);
+  app.use('/api/notes', fallbackRouter);
+  console.log('⚠️ Fallback router registered for /api/notes');
 }
+
+console.log('✅ Route loading completed');
+console.log('📊 Status: Auth routes:', authRoutesLoaded ? '✅' : '❌', 'Notes routes:', notesRoutesLoaded ? '✅' : '❌');
 
 // Health check
 app.get('/api/health', (req, res) => {
