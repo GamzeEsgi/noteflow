@@ -59,6 +59,21 @@ app.use(async (req, res, next) => {
   }
 });
 
+// Error handling middleware - Route'lardan ÖNCE ekle
+app.use((err, req, res, next) => {
+  console.error('❌ Unhandled error:', err);
+  console.error('❌ Error stack:', err.stack);
+  if (!res.headersSent) {
+    res.status(500).json({ 
+      mesaj: 'Bir hata oluştu.',
+      message: 'Something went wrong!', 
+      error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+      errorName: err.name,
+      errorCode: err.code
+    });
+  }
+});
+
 // Serve static files from frontend directory
 app.use(express.static(path.join(__dirname, '../frontend'), {
   maxAge: '1d',
