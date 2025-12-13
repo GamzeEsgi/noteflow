@@ -86,10 +86,20 @@ exports.register = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('❌ Register error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    
+    const errorMessage = process.env.NODE_ENV === 'production' 
+      ? 'Kayıt sırasında bir hata oluştu.'
+      : error.message;
+    
     res.status(500).json({ 
+      mesaj: 'Kayıt sırasında bir hata oluştu.',
       message: 'Server error', 
-      error: error.message,
+      error: errorMessage,
+      errorName: error.name,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
@@ -98,10 +108,16 @@ exports.register = async (req, res) => {
 // Login
 exports.login = async (req, res) => {
   try {
+    console.log('🔐 Login attempt started');
+    
     // Check MongoDB connection
     const mongoose = require('mongoose');
+    console.log('📊 MongoDB connection state:', mongoose.connection.readyState);
+    
     if (mongoose.connection.readyState !== 1) {
+      console.error('❌ MongoDB not connected');
       return res.status(503).json({ 
+        mesaj: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
         message: 'Database bağlantısı yok. Lütfen MongoDB bağlantısını kontrol edin.',
         error: 'MongoDB not connected'
       });
@@ -111,41 +127,67 @@ exports.login = async (req, res) => {
     const { email, password, sifre } = req.body;
     const userPassword = password || sifre;
 
+    console.log('📧 Login attempt for email:', email);
+
     if (!email || !userPassword) {
+      console.error('❌ Missing email or password');
       return res.status(400).json({ 
         mesaj: 'Email ve şifre gereklidir.',
         message: 'Please provide email and password' 
       });
     }
 
+    // JWT_SECRET kontrolü
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET not set');
+      return res.status(500).json({ 
+        mesaj: 'Sunucu yapılandırma hatası.',
+        message: 'Server configuration error',
+        error: 'JWT_SECRET not set'
+      });
+    }
+
     // Find user
+    console.log('🔍 Searching for user...');
     const user = await User.findOne({ email });
     if (!user) {
+      console.error('❌ User not found:', email);
       return res.status(400).json({ 
         mesaj: 'Email veya şifre hatalı.',
         message: 'Invalid credentials' 
       });
     }
+
+    console.log('✅ User found:', user.email);
 
     // Check password
+    console.log('🔐 Checking password...');
     const isMatch = await bcrypt.compare(userPassword, user.password);
     if (!isMatch) {
+      console.error('❌ Password mismatch');
       return res.status(400).json({ 
         mesaj: 'Email veya şifre hatalı.',
         message: 'Invalid credentials' 
       });
     }
 
+    console.log('✅ Password verified');
+
     // Generate token
+    console.log('🎫 Generating token...');
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
+    console.log('✅ Token generated');
+
     // Frontend'in beklediği format: kullanici.rol
     // MongoDB User model'inde rol yoksa default 'sakin' kullan
     const userRol = user.rol || 'sakin';
+
+    console.log('✅ Login successful for:', email);
 
     res.json({
       mesaj: 'Giriş başarılı',
@@ -166,10 +208,21 @@ exports.login = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('❌ Login error:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error name:', error.name);
+    console.error('❌ Error message:', error.message);
+    
+    // Daha detaylı hata mesajı
+    const errorMessage = process.env.NODE_ENV === 'production' 
+      ? 'Giriş sırasında bir hata oluştu.'
+      : error.message;
+    
     res.status(500).json({ 
+      mesaj: 'Giriş sırasında bir hata oluştu.',
       message: 'Server error', 
-      error: error.message,
+      error: errorMessage,
+      errorName: error.name,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
