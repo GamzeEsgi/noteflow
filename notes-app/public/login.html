@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Not App - Giriş Yap">
+    <title>Not App - Giriş</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>📝 Not App</h1>
+                <p>Giriş yaparak notlarına devam et</p>
+            </div>
+
+            <!-- Giriş formu -->
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="loginEmail">E-posta</label>
+                    <input
+                        type="email"
+                        id="loginEmail"
+                        placeholder="ornek@email.com"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="loginPassword">Şifre</label>
+                    <input
+                        type="password"
+                        id="loginPassword"
+                        placeholder="Şifrenizi girin"
+                        required
+                    >
+                </div>
+
+                <div class="form-options">
+                    <a href="#" id="forgotPasswordLink" class="forgot-password">Şifremi unuttum</a>
+                </div>
+
+                <button type="submit" class="btn-primary auth-btn" id="loginBtn">
+                    <span class="btn-text">Giriş Yap</span>
+                    <div class="loading-spinner" style="display: none;"></div>
+                </button>
+            </form>
+
+            <!-- Şifre sıfırlama formu (gizli) -->
+            <form id="resetForm" class="auth-form" style="display: none;">
+                <div class="form-group">
+                    <label for="resetEmail">E-posta</label>
+                    <input
+                        type="email"
+                        id="resetEmail"
+                        placeholder="Şifre sıfırlama için e-posta"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn-primary auth-btn" id="resetBtn">
+                    <span class="btn-text">Şifre Sıfırla</span>
+                    <div class="loading-spinner" style="display: none;"></div>
+                </button>
+
+                <a href="#" id="backToLogin" class="back-link">← Giriş'e dön</a>
+            </form>
+
+            <div class="auth-footer">
+                <p>Hesabın yok mu? <a href="register.html">Kayıt ol</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bildirimler için -->
+    <div id="notification" class="notification" style="display: none;">
+        <div class="notification-content">
+            <span id="notificationText"></span>
+        </div>
+    </div>
+
+    <script src="../js/auth.js"></script>
+    <script src="../js/app.js"></script>
+</body>
+</html>
+
+
+

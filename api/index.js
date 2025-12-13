@@ -28,13 +28,23 @@ app.use(async (req, res, next) => {
     // Eğer bağlantı yoksa, bağlanmayı dene
     if (mongoose.connection.readyState !== 1) {
       console.log('🔄 MongoDB bağlantısı kuruluyor...');
-      await connectDB();
+      try {
+        await connectDB();
+        console.log('✅ MongoDB bağlantısı başarılı');
+      } catch (dbError) {
+        console.error('❌ MongoDB bağlantı hatası:', dbError.message);
+        // Health check endpoint'i için bağlantı hatası olsa bile devam et
+        if (req.path === '/api/health') {
+          return next();
+        }
+        // Diğer endpoint'ler için de devam et, controller'da kontrol edilecek
+      }
     }
     
     next();
   } catch (error) {
-    console.error('❌ MongoDB bağlantı hatası:', error.message);
-    // Bağlantı hatası olsa bile devam et (bazı endpoint'ler çalışabilir)
+    console.error('❌ Middleware hatası:', error.message);
+    // Hata olsa bile devam et (SSL hatasını önlemek için)
     next();
   }
 });
@@ -92,9 +102,25 @@ app.get('*', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: 'Something went wrong!', error: err.message });
+  console.error('❌ Error:', err.stack);
+  res.status(500).json({ 
+    mesaj: 'Bir hata oluştu.',
+    message: 'Something went wrong!', 
+    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message 
+  });
+});
+
+// Unhandled route handler - 404 için
+app.use((req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ 
+      mesaj: 'API endpoint bulunamadı.',
+      message: 'API endpoint not found' 
+    });
+  }
+  res.status(404).send('Not found');
 });
 
 // Vercel serverless function export
+// Vercel Express app'i direkt olarak export eder
 module.exports = app;

@@ -5,6 +5,9 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 router.post('/register', authController.register);
 router.post('/login', authController.login);
+// Türkçe route alias'ları
+router.post('/giris', authController.login);
+router.post('/kayit', authController.register);
 router.get('/me', authMiddleware, authController.getMe);
 
 // Test kullanıcısı oluşturma endpoint'i (sadece development/test için)

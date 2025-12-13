@@ -11,3 +11,5 @@ router.delete('/:id', authMiddleware, notesController.deleteNote);
 
 module.exports = router;
 
+
+

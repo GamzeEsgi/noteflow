@@ -238,3 +238,5 @@ mongodb+srv://KULLANICI_ADI:ŞİFRE@cluster0.xxxxx.mongodb.net/cloudnotes?retryW
 **Son Güncelleme:** 2025-01-27
 **Not:** Bu dosya tüm projelerinizin environment variables özetini içerir. Production'da mutlaka güçlü secret'lar kullanın!
 
+
+

@@ -14,29 +14,43 @@ exports.register = async (req, res) => {
       });
     }
 
-    const { email, password } = req.body;
+    // Hem 'password' hem 'sifre' alanlarını kabul et
+    const { email, password, sifre, ad, blok, kat, daire, telefon, rol } = req.body;
+    const userPassword = password || sifre;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+    if (!email || !userPassword) {
+      return res.status(400).json({ 
+        mesaj: 'Email ve şifre gereklidir.',
+        message: 'Please provide email and password' 
+      });
     }
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ 
+        mesaj: 'Bu email zaten kullanılıyor.',
+        message: 'User already exists' 
+      });
     }
 
     // Hash password
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(userPassword, salt);
 
-    // Create user
-    const user = new User({
+    // Create user - MongoDB User model'ine göre
+    const userData = {
       email,
       password: hashedPassword,
       plan: 'free'
-    });
+    };
 
+    // Eğer User model'inde rol field'ı varsa ekle
+    if (rol) {
+      userData.rol = rol;
+    }
+
+    const user = new User(userData);
     await user.save();
 
     // Generate token
@@ -46,12 +60,28 @@ exports.register = async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Frontend'in beklediği format
+    const userRol = user.rol || 'sakin';
+
     res.status(201).json({
+      mesaj: 'Kayıt başarılı',
       message: 'User created successfully',
       token,
+      kullanici: {
+        id: user._id,
+        email: user.email,
+        rol: userRol,
+        plan: user.plan,
+        ad: ad || null,
+        blok: blok || null,
+        kat: kat || null,
+        daire: daire || null
+      },
+      // Backward compatibility
       user: {
         id: user._id,
         email: user.email,
+        rol: userRol,
         plan: user.plan
       }
     });
@@ -77,22 +107,33 @@ exports.login = async (req, res) => {
       });
     }
 
-    const { email, password } = req.body;
+    // Hem 'password' hem 'sifre' alanlarını kabul et
+    const { email, password, sifre } = req.body;
+    const userPassword = password || sifre;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Please provide email and password' });
+    if (!email || !userPassword) {
+      return res.status(400).json({ 
+        mesaj: 'Email ve şifre gereklidir.',
+        message: 'Please provide email and password' 
+      });
     }
 
     // Find user
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ 
+        mesaj: 'Email veya şifre hatalı.',
+        message: 'Invalid credentials' 
+      });
     }
 
     // Check password
-    const isMatch = await bcrypt.compare(password, user.password);
+    const isMatch = await bcrypt.compare(userPassword, user.password);
     if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+      return res.status(400).json({ 
+        mesaj: 'Email veya şifre hatalı.',
+        message: 'Invalid credentials' 
+      });
     }
 
     // Generate token
@@ -102,12 +143,25 @@ exports.login = async (req, res) => {
       { expiresIn: '7d' }
     );
 
+    // Frontend'in beklediği format: kullanici.rol
+    // MongoDB User model'inde rol yoksa default 'sakin' kullan
+    const userRol = user.rol || 'sakin';
+
     res.json({
+      mesaj: 'Giriş başarılı',
       message: 'Login successful',
       token,
+      kullanici: {
+        id: user._id,
+        email: user.email,
+        rol: userRol,
+        plan: user.plan
+      },
+      // Backward compatibility için user field'ı da ekle
       user: {
         id: user._id,
         email: user.email,
+        rol: userRol,
         plan: user.plan
       }
     });

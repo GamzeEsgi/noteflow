@@ -277,3 +277,5 @@ Tüm sorun çözüm rehberleri projede mevcuttur:
 
 **Proje hazır ve hocaya gönderilebilir! 🎉**
 
+
+

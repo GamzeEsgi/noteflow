@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Not App - Dashboard">
+    <title>Not App - Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Ana container -->
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">📝 Not App</div>
+                <button id="sidebarToggle" class="sidebar-toggle">☰</button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#notes" class="nav-item active" data-view="notes">
+                    <span class="nav-icon">📓</span>
+                    <span class="nav-text">Notlarım</span>
+                </a>
+                <a href="#new-note" class="nav-item" data-view="new-note">
+                    <span class="nav-icon">➕</span>
+                    <span class="nav-text">Yeni Not</span>
+                </a>
+                <a href="#settings" class="nav-item" data-view="settings">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-text">Ayarlar</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="logoutBtn" class="btn-outline logout-btn">
+                    <span class="btn-icon">🚪</span>
+                    Çıkış Yap
+                </button>
+            </div>
+        </aside>
+
+        <!-- Ana içerik alanı -->
+        <main class="main-content">
+            <!-- Üst header -->
+            <header class="content-header">
+                <div class="header-left">
+                    <h1 id="pageTitle">Notlarım</h1>
+                </div>
+                <div class="header-right">
+                    <!-- Tema toggle -->
+                    <button id="themeToggle" class="theme-toggle">
+                        <span class="theme-icon">🌙</span>
+                    </button>
+
+                    <!-- Görünüm toggle (grid/list) -->
+                    <button id="viewToggle" class="view-toggle">
+                        <span class="view-icon">⊞</span>
+                    </button>
+
+                    <!-- Yeni not butonu (mobil için) -->
+                    <button id="newNoteMobileBtn" class="btn-primary mobile-new-btn">
+                        <span class="btn-icon">➕</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- İçerik bölümü -->
+            <div class="content-body">
+                <!-- Notlar listesi görünümü -->
+                <div id="notesView" class="view active">
+                    <div class="notes-controls">
+                        <div class="search-container">
+                            <input
+                                type="text"
+                                id="searchInput"
+                                placeholder="Notlarda ara..."
+                                class="search-input"
+                            >
+                            <span class="search-icon">🔍</span>
+                        </div>
+                        <div class="notes-count">
+                            <span id="notesCount">0 not</span>
+                        </div>
+                    </div>
+
+                    <!-- Loading -->
+                    <div id="loading" class="loading-container" style="display: none;">
+                        <div class="loading-spinner"></div>
+                        <p>Yükleniyor...</p>
+                    </div>
+
+                    <!-- Boş durum -->
+                    <div id="emptyState" class="empty-state" style="display: none;">
+                        <div class="empty-icon">📝</div>
+                        <h3>Henüz notun yok</h3>
+                        <p>İlk notunu oluşturmaya başla!</p>
+                        <button id="createFirstNoteBtn" class="btn-primary">İlk Notumu Oluştur</button>
+                    </div>
+
+                    <!-- Notlar grid/list -->
+                    <div id="notesContainer" class="notes-container">
+                        <!-- Notlar buraya yüklenecek -->
+                    </div>
+                </div>
+
+                <!-- Yeni not oluşturma görünümü -->
+                <div id="newNoteView" class="view">
+                    <div class="editor-container">
+                        <div class="editor-header">
+                            <input
+                                type="text"
+                                id="noteTitle"
+                                placeholder="Not başlığı..."
+                                class="note-title-input"
+                            >
+                            <div class="editor-actions">
+                                <button id="saveNoteBtn" class="btn-primary">Kaydet</button>
+                                <button id="cancelNoteBtn" class="btn-outline">İptal</button>
+                            </div>
+                        </div>
+
+                        <div class="editor-body">
+                            <textarea
+                                id="noteContent"
+                                placeholder="Not içeriğini yazmaya başla... (Markdown desteklenir)"
+                                class="note-content-editor"
+                            ></textarea>
+
+                            <!-- Markdown önizleme -->
+                            <div id="markdownPreview" class="markdown-preview" style="display: none;">
+                                <!-- Önizleme buraya gelecek -->
+                            </div>
+                        </div>
+
+                        <div class="editor-footer">
+                            <div class="editor-meta">
+                                <span id="autoSaveStatus" class="auto-save-status">Kaydedildi</span>
+                                <span id="charCount" class="char-count">0 karakter</span>
+                            </div>
+                            <button id="previewToggle" class="btn-outline preview-toggle">
+                                <span class="preview-icon">👁️</span>
+                                Önizleme
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ayarlar görünümü -->
+                <div id="settingsView" class="view">
+                    <div class="settings-container">
+                        <h2>Ayarlar</h2>
+
+                        <div class="settings-section">
+                            <h3>Tema</h3>
+                            <div class="setting-item">
+                                <label for="themeSelect">Tema Seçimi</label>
+                                <select id="themeSelect" class="setting-select">
+                                    <option value="auto">Otomatik (Sistem)</option>
+                                    <option value="light">Aydınlık</option>
+                                    <option value="dark">Karanlık</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Hesap</h3>
+                            <div class="setting-item">
+                                <span class="setting-label">E-posta:</span>
+                                <span id="userEmail" class="setting-value">-</span>
+                            </div>
+                            <div class="setting-item">
+                                <span class="setting-label">Kayıt Tarihi:</span>
+                                <span id="userCreatedAt" class="setting-value">-</span>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3>Veri</h3>
+                            <button id="exportNotesBtn" class="btn-outline">Notları Dışa Aktar</button>
+                            <button id="clearLocalDataBtn" class="btn-outline warning">Yerel Veriyi Temizle</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal'lar -->
+    <!-- Not düzenleme modal'ı -->
+    <div id="noteModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Notu Düzenle</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Modal içeriği JS ile doldurulacak -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Onay modal'ı -->
+    <div id="confirmModal" class="modal" style="display: none;">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h3 id="confirmTitle">Onay</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage">Bu işlemi yapmak istediğinizden emin misiniz?</p>
+                <div class="modal-actions">
+                    <button id="confirmCancel" class="btn-outline">İptal</button>
+                    <button id="confirmOk" class="btn-primary">Tamam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bildirimler -->
+    <div id="notification" class="notification" style="display: none;">
+        <div class="notification-content">
+            <span id="notificationText"></span>
+        </div>
+    </div>
+
+    <!-- Script dosyaları -->
+    <script src="../js/supabaseClient.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/notes.js"></script>
+    <script src="../js/app.js"></script>
+</body>
+</html>
+
+
+
