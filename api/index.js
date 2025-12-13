@@ -65,45 +65,57 @@ app.use(express.static(path.join(__dirname, '../frontend'), {
   etag: true
 }));
 
-// Routes - Lazy loading ile hata yakalama
+// Routes - Güvenli yükleme ile hata yakalama
 let authRoutes, notesRoutes;
 
+// Auth routes yükleme
 try {
   console.log('📦 Loading auth routes...');
   authRoutes = require('../backend/routes/auth');
-  console.log('✅ Auth routes loaded');
+  console.log('✅ Auth routes loaded successfully');
+  app.use('/api/auth', authRoutes);
 } catch (error) {
   console.error('❌ Backend yüklenirken hata:', error.message);
   console.error('❌ Error stack:', error.stack);
-  // Hata durumunda boş router kullan
+  console.error('❌ Error name:', error.name);
+  console.error('❌ Error code:', error.code);
+  
+  // Hata durumunda fallback router oluştur
   authRoutes = express.Router();
   authRoutes.all('*', (req, res) => {
     res.status(500).json({ 
       mesaj: 'Backend yüklenirken hata oluştu.',
       message: 'Backend loading error',
-      error: error.message 
+      error: error.message,
+      errorName: error.name,
+      errorCode: error.code,
+      hint: 'Check Vercel Function Logs for details'
     });
   });
+  app.use('/api/auth', authRoutes);
 }
 
+// Notes routes yükleme
 try {
   console.log('📦 Loading notes routes...');
   notesRoutes = require('../backend/routes/notes');
-  console.log('✅ Notes routes loaded');
+  console.log('✅ Notes routes loaded successfully');
+  app.use('/api/notes', notesRoutes);
 } catch (error) {
   console.error('❌ Notes routes yüklenirken hata:', error.message);
+  console.error('❌ Error stack:', error.stack);
   notesRoutes = express.Router();
   notesRoutes.all('*', (req, res) => {
     res.status(500).json({ 
       mesaj: 'Notes routes yüklenirken hata oluştu.',
       message: 'Notes routes loading error',
-      error: error.message 
+      error: error.message,
+      errorName: error.name,
+      errorCode: error.code
     });
   });
+  app.use('/api/notes', notesRoutes);
 }
-
-app.use('/api/auth', authRoutes);
-app.use('/api/notes', notesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
