@@ -65,9 +65,45 @@ app.use(express.static(path.join(__dirname, '../frontend'), {
   etag: true
 }));
 
-// Routes
-app.use('/api/auth', require('../backend/routes/auth'));
-app.use('/api/notes', require('../backend/routes/notes'));
+// Routes - Lazy loading ile hata yakalama
+let authRoutes, notesRoutes;
+
+try {
+  console.log('📦 Loading auth routes...');
+  authRoutes = require('../backend/routes/auth');
+  console.log('✅ Auth routes loaded');
+} catch (error) {
+  console.error('❌ Backend yüklenirken hata:', error.message);
+  console.error('❌ Error stack:', error.stack);
+  // Hata durumunda boş router kullan
+  authRoutes = express.Router();
+  authRoutes.all('*', (req, res) => {
+    res.status(500).json({ 
+      mesaj: 'Backend yüklenirken hata oluştu.',
+      message: 'Backend loading error',
+      error: error.message 
+    });
+  });
+}
+
+try {
+  console.log('📦 Loading notes routes...');
+  notesRoutes = require('../backend/routes/notes');
+  console.log('✅ Notes routes loaded');
+} catch (error) {
+  console.error('❌ Notes routes yüklenirken hata:', error.message);
+  notesRoutes = express.Router();
+  notesRoutes.all('*', (req, res) => {
+    res.status(500).json({ 
+      mesaj: 'Notes routes yüklenirken hata oluştu.',
+      message: 'Notes routes loading error',
+      error: error.message 
+    });
+  });
+}
+
+app.use('/api/auth', authRoutes);
+app.use('/api/notes', notesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
